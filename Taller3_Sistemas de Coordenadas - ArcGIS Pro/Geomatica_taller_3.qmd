@@ -1,0 +1,83 @@
+---
+title: "Sistemas de Coordenadas - ArcGIS Pro"
+author: "Luis Gálvez Gómez"
+format:
+  html: default
+  pdf: default
+execute:
+  echo: true
+---
+
+## Resumen del flujo de trabajo...
+
+## *Preparación del proyecto*
+Se deben cargar las capas vectoriales y revisar las propiedades de cada capa para identificar el Sistema de Referencia de Coordenadas (SRC). De esta manera se distinguen las capas que no tienen definido su sistema de coordenadas Dado que el archivo no cuenta con la extensión .prj no contiene información alusiva al SRC y por tanto carece del mismo, por lo que se le debe asignar uno.
+
+| Archivo | Función |
+|---|---|
+| `.shp` | Geometría |
+| `.shx` | Índice espacial |
+| `.dbf` | Tabla de atributos |
+| `.prj` | Sistema de coordenadas |
+
+
+## *Definición del sistema de coordenadas*
+
+Para asignar el CRS correcto al archivo se Utilizó el sistema **GCS Bogotá**.
+
+::: {.callout-note}
+### Sistemas de coordenadas utilizados en Colombia
+
+Asignar un CRS **no reproyecta los datos**, únicamente define el sistema de coordenadas asociado al archivo.
+
+| Sistema de Coordenadas | Tipo | Datum | Proyección | EPSG |
+|---|---|---|---|---|
+| GCS Bogotá | Geográfico | Bogotá 1975 | Lat/Long | 4218 |
+| MAGNA-SIRGAS | Geográfico | GRS80 | Lat/Long | 4686 |
+| Colombia Bogota Zone | Proyectado | Bogotá | Transverse Mercator | 21896 |
+| MAGNA-SIRGAS / Colombia Bogotá | Proyectado | MAGNA-SIRGAS | Transverse Mercator | 3116 |
+:::
+
+## *Conversión de datos*
+
+Se convirtió de coordenadas geograficas a planas seleccionando como CRS de salida **Colombia Bogota Zone**, de manera que las coordenadas ahora se encontraban en metros.
+
+Luego, se cambió el sistema de referencia desde **Datum Bogotá** a **MAGNA-SIRGAS** (*Transformación*).
+
+Se exportaron los datos utilizando el src definido en el mapa y se creó un archvo .gpkg al que se le asignó el SRC usando el archivo *coordenadas_wkid_11117_magna_sirgas_east_central.txt*
+
+::: {.callout-note}
+Existe una diferencia entre *Transformar* y *Reproyectar* los datos. Basicamente cuando se reproyecta se operan bajo un mismo elipsoide, mientras que al transformarlo el elipsoide es distinto, es decir que el modelo matematico que define la forma de la tierra (y sobre el que se realizan las mediciones) tiene propiedades distintas, no solamente se desplaza el punto de origen (Como en las reproyecciones). 
+:::
+
+Como resultado de este ejercicio se encontraron desplazamientos sustanciales en la ubicación de un mismo archivo o poligono, algo natural debido a que se están representando capas con distinto SRC bajo uno común (el del mapa), es decir la reproyección al vuelo que realiza el software.
+
+# *Sobre el DATUM...*
+
+<div style="text-align:right; font-style:italic;">
+*"En geodesia, un elipsoide de referencia es una superficie definida matemáticamente que se aproxima al geoide, mientras éste constituye la figura más cercana a la forma real de la Tierra o de otro cuerpo planetario. El nombre original del elipsoide fue oblate ellipsoid of revolution."*
+</div>
+
+<div style="text-align:right; font-style:italic;">
+Hay cientos de datum, es decir hay cientos de modelos de referencia, y cada uno de ellos se relaciona a un elipsoide específico. Sin embargo, un mismo elipsoide puede servir de referencia a varios datum, ej.,GRS80, WGS84... Una o más ubicaciones en la superficie terrestre se eligen como puntos de referencia fijos (datum vertical y/o datum horizontal). A partir de estos puntos se define el origen y las coordenadas de latitud, longitud y altitud de punto. El punto de referencia puede ser el mismo, o como en el caso colombiano, ser puntos independientes. En Colombia, el datum el vertical está localizado en Buenaventura y el horizontal en Bogotá D.C."
+
+</div>
+
+**Siabato, Willington (2021). Cartografía General. Notas de apoyo en clase. 1.ra edición. Universidad Nacional de Colombia, Bogotá D.C. – Colombia. ISBN 978-958-49-3427-7. Registro DNDA N.º 10-980-1**
+
+![Tomado de Siabato, 2021.](DATUM.png){width=60%}
+
+# Preguntas 
+
+## *¿El GSC_Bogota es geográfico o proyectado?*
+Es proyectado ya que sus unidades no son metricas, por el contrario, están expresadas en grados.
+
+## *¿Colombia bogotá zone es geográfico o proyectado?*
+Es un sistema proyectado ya que sus unidades son metricas. En todo caso, ante la duda, tanto en Qgis como en ArcGis es posible ver las propiedades del SRC filtrando por el codigo EPSG (Codigo asignado a las proyecciones por empresas petroleras europeas) y revisar la información del datum, la cual contiene Origen, desplazamiento, elipsoide de referencia, etc. 
+
+::: {.callout-note}
+Es posible ingresar el SRC a un software o proyecto que involucre información geoespacial usando la información del DATUM 
+:::
+
+## *¿Cual es la diferencia entre Datum Bogotá y MAGNA-SIRGAS?*
+MAGNA-SIRGAS es el sistema actual, mientras que Datum Bogotá ya no se encuentra en uso, pero historicamente fue el utilizado en la cartografia oficial. Tecnicamente la diferencia radica en que el Datum Bogotá es un sistema local cuyo origen está desplazado del centro terrestre, mientras que MAGNA-SIRGAS es un sistema geocéntrico alineado con los sistemas de referencia globales, lo que genera desplazamientos de varios metros al comparar coordenadas entre ambos sistemas.

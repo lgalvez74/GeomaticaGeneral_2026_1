@@ -1,0 +1,264 @@
+---
+title: "Geomatica Taller 1 - Desafío de Laboratorio: Visualización Geoespacial"
+author: "Luis Gálvez Gómez"
+format:
+  html: default
+  pdf: default
+execute:
+  echo: true
+---
+
+# Parte A — Notebooks de Clase (Reproducibilidad)
+## Estaticos (01_python_estatico.ipynb - 03_r_estatico.ipynb)
+
+::: {.callout-tip collapse="false" title="Notebooks Estaticos"}
+
+::: {.panel-tabset}
+
+## 🐍 Python (Leafmap)
+
+```{python}
+import geopandas
+from geodatasets import get_path
+
+path_to_data = get_path("nybb")
+gdf = geopandas.read_file(path_to_data)
+
+print(gdf.head())
+
+gdf.plot("BoroName", legend=True)
+```
+
+---
+
+## 📍 R (Mapview)
+
+```{r}
+# #| eval: false
+library(sf)
+library(ggspatial)
+library(tmap)
+library(ggplot2)
+
+# --- Usando tmap (Ideal para cartografía temática) ---
+data("World")
+col <- World[World$name == "Colombia", ]
+
+tm_shape(col) +
+  tm_polygons("pop_est", palette = "Blues", title = "Población Est.") +
+  tm_compass(position = c("right", "top")) +
+  tm_scale_bar()
+
+# --- Usando ggplot2 (Gramática de gráficos) ---
+ggplot() +
+  geom_sf(data = col, fill = "orange", color = "black") +
+  
+  # Barra de escala
+  annotation_scale(
+    location = "bl",        # bottom left
+    width_hint = 0.3
+  ) +
+  
+  # Brújula
+  annotation_north_arrow(
+    location = "tr",        # top right
+    which_north = "true",
+    style = north_arrow_fancy_orienteering
+  ) +
+  
+  theme_minimal() +
+  labs(title = "Mapa de Colombia con ggplot2")
+
+```
+
+:::
+
+:::
+
+## Dinamicos (02_python_dinamico.ipynb - 04_r_dinamico.ipynb)
+
+::: {.callout-tip collapse="false" title="Notebooks Dinámicos"}
+
+::: {.panel-tabset}
+
+## Python
+```{python}
+#| eval: false
+
+import leafmap
+
+# 1. Crear el objeto mapa centrado en el Ecuador con zoom global
+# Leafmap permite usar diversos mapas base por defecto
+m = leafmap.Map(center=[0, 0], zoom=2)
+
+# 2. Definir la ruta del archivo GeoJSON (Cables submarinos)
+# Se utiliza una URL de release para mayor compatibilidad con los drivers GDAL
+in_geojson = (
+    "https://github.com/opengeos/datasets/releases/download/vector/cables.geojson"
+)
+
+# 3. Añadir la capa al mapa con un nombre específico
+# Este método lee el archivo remoto y lo renderiza sobre el mapa base
+m.add_geojson(in_geojson, layer_name="Líneas de Cable")
+
+# 4. Mostrar el mapa interactivo
+m
+```
+
+## R
+```{r}
+library(sf)
+library(mapview)
+
+# 1. Crear punto de referencia UNAL Bogotá (EPSG:4326)
+unal <- st_sfc(st_point(c(-74.08, 4.63)), crs = 4326)
+
+# 2. Visualización interactiva inmediata
+# Genera automáticamente controles de capas y mapas base
+mapview(unal, col.regions = "red", layer.name = "Sede Bogotá")
+```
+:::
+
+:::
+
+### **Nota**
+Intenté que se visualizara en el html el codigo de 02_python_dinamico.ipynb, pero siempre arrojó el siguiente error:
+
+Error in py_call_impl(callable, call_args$unnamed, call_args$named) : 
+  Exception: Object of type ndarray is not JSON serializable
+Run `reticulate::py_last_error()` for details.
+Calls: .main ... eng_python_autoprint -> as_r_value -> <Anonymous> -> py_call_impl
+
+Quitting from Prueba1.qmd:129-148 [unnamed-chunk-5]
+Execution halted
+
+Dentro de lo que investigué encontré que es un problema en el renderizado por usar un motor de R, aparentemente no soporta muy bien los mapas interactivos. Para ello encontré que es mejor usar jupyter como motor, pero no soporta mezclar R y python en el mismo codigo, no supe muy bien como solucionar este problema así que para efectos del renderizado no se ejecutó (Aunque en jupyter corre sin problema alguno).
+
+# Parte B — Desafío de Exploración
+
+::: {.callout-tip collapse="true" title="Mapa de Pendientes (Clasificación IGAC %) - Cundinamarca"}
+## Clasificación de Pendientes (IGAC) en Cundinamarca
+
+```{python}
+import ee
+import folium
+
+ee.Initialize()
+
+# -------------------------
+# Límite Cundinamarca
+# -------------------------
+colombia = ee.FeatureCollection("FAO/GAUL/2015/level1")
+
+cundinamarca = colombia.filter(
+    ee.Filter.And(
+        ee.Filter.eq("ADM0_NAME", "Colombia"),
+        ee.Filter.eq("ADM1_NAME", "Cundinamarca")
+    )
+)
+
+# -------------------------
+# DEM y pendiente
+# -------------------------
+dem = ee.Image("USGS/SRTMGL1_003").clip(cundinamarca)
+
+slope_deg = ee.Terrain.slope(dem)
+slope_pct = slope_deg.multiply(3.14159).divide(180).tan().multiply(100)
+
+clasificacion = slope_pct \
+    .where(slope_pct.lte(3), 1) \
+    .where(slope_pct.gt(3).And(slope_pct.lte(7)), 2) \
+    .where(slope_pct.gt(7).And(slope_pct.lte(12)), 3) \
+    .where(slope_pct.gt(12).And(slope_pct.lte(25)), 4) \
+    .where(slope_pct.gt(25).And(slope_pct.lte(50)), 5) \
+    .where(slope_pct.gt(50).And(slope_pct.lte(75)), 6) \
+    .where(slope_pct.gt(75), 7)
+
+vis = {
+    "min": 1,
+    "max": 7,
+    "palette": [
+        "#1a9641",
+        "#a6d96a",
+        "#ffffbf",
+        "#fdae61",
+        "#f46d43",
+        "#d73027",
+        "#7f0000"
+    ]
+}
+
+map_id = ee.Image(clasificacion).getMapId(vis)
+
+# -------------------------
+# Crear mapa
+# -------------------------
+m = folium.Map(location=[4.7, -74.1], zoom_start=8)
+
+folium.TileLayer(
+    tiles=map_id['tile_fetcher'].url_format,
+    attr='Google Earth Engine',
+    name='Pendiente IGAC'
+).add_to(m)
+
+folium.LayerControl().add_to(m)
+
+# -------------------------
+# LEYENDA HTML MANUAL
+# -------------------------
+legend_html = """
+<div style="
+position: fixed; 
+bottom: 40px; left: 40px; width: 200px; 
+background-color: white; 
+border:2px solid grey; 
+z-index:9999; 
+font-size:14px;
+padding: 10px;
+">
+<b>Clasificación Pendiente IGAC (%)</b><br>
+<i style="background:#1a9641;width:15px;height:15px;float:left;margin-right:5px;"></i>0–3 %<br>
+<i style="background:#a6d96a;width:15px;height:15px;float:left;margin-right:5px;"></i>3–7 %<br>
+<i style="background:#ffffbf;width:15px;height:15px;float:left;margin-right:5px;"></i>7–12 %<br>
+<i style="background:#fdae61;width:15px;height:15px;float:left;margin-right:5px;"></i>12–25 %<br>
+<i style="background:#f46d43;width:15px;height:15px;float:left;margin-right:5px;"></i>25–50 %<br>
+<i style="background:#d73027;width:15px;height:15px;float:left;margin-right:5px;"></i>50–75 %<br>
+<i style="background:#7f0000;width:15px;height:15px;float:left;margin-right:5px;"></i>>75 %
+</div>
+"""
+
+m.get_root().html.add_child(folium.Element(legend_html))
+
+m
+```
+
+:::
+
+### Nota
+A pesar que en jupyter notebook el codigo ejecuta la leyenda y no presenta ningún problema, al momento de renderizarlo en quarto este no soporta la leyenda, aparentemente es por que la leyenda se intenta cargar como un widget y para lograrlo hubo que agregar la leyenda manualmente.
+
+# Preguntas de Análisis
+
+## *1.Facilidad e Intuición*
+Basado en los 4 notebooks de clase: ¿Cuál de las librerías les pareció más intuitiva para un usuario que nunca ha programado?
+
+### *Respuesta*
+Personalmente creo que `tmap` y `ggplot2`  son más intuitivos y utilizan menos lineas de codigo y mas faciles de interpretar, aunque `geopandas` tampoco es particularmente dificil. 
+
+## *2.Calidad Cartográfica*
+Para la entrega de un informe técnico en PDF, ¿qué motor consideran que genera mapas estáticos con mejor acabado visual
+
+### *Respuesta*
+Las composiciones cartograficas que he realizdo en mi desarrollo profesional han sido mayormente hechas en Qgis o ArcMap donde el visor facilita el desarrollo del componente artistico de la cartografia. Aunque entre los mapas renderizados en este ejercicio me parecen mas esteticos y con mejor acabado los generados en R, aunque supongo que esto también dependerá de la parametrización y el codigo empleado.
+
+## *3.Potencial de la Documentación*
+Al revisar las URL de documentación entregadas, ¿qué funcionalidad avanzada encontraron en el ecosistema de OpenGeos que les sería útil para su trabajo final o investigación?
+
+### *Respuesta*
+Me parece bastante interesante `Geemap` para conectar Google Earth Engine directamente con python y trabajar todo en un solo codigo y no alternar entre distintos entornos y lenguajes de programación. Esto es particularmente util dado que permite explotar la capacidad de computo de engine y su repositorio de datos.
+
+## *4.Elección de Herramientas*
+Si tuvieran que atender una emergencia ambiental real y necesitan desplegar un visor web en menos de 5 minutos para que personal no técnico visualice una inundación, ¿qué herramienta elegirían y por qué? (Máximo 5 líneas).
+
+### *Respuesta*
+Aparentemente la ruta mas facil es con un codigo de python que conecte el archivo con la información que se desea representar con `folium`, el cual genera un codigo en `Leaflet` que es una librería JavaScript para mapas interactivos en navegador.

@@ -1,0 +1,38 @@
+---
+title: "Geomatica Taller 2 - Geoportales y Servicios Web"
+author: "Luis Gálvez Gómez"
+format:
+  html: default
+  pdf: default
+execute:
+  echo: true
+---
+
+## Fuentes de datos geoespaciales
+
+| Fuente | URL | Tipo | Nombre | SRC |
+|------|------|------|------|------|
+| Colombia en Mapas | [Portal Colombia en Mapas](https://www.colombiaenmapas.gov.co/#) | SHP | Municipios, Distritos y Áreas no municipalizadas | 9377 |
+| Colombia en Mapas | [Servicio WFS IGAC](https://mapas.igac.gov.co/server/services/agrologia/...) | WFS | Suelos Cundinamarca | 9377 |
+| OpenStreetMap | [Servicio WMS OSM](https://ows.terrestris.de/osm/service?SERVICE=WMS) | WMS | OpenStreetMap Standard | 3857 |
+| SoilGrids global soil dataset | [SoilGrids WCS](https://maps.isric.org/mapserv?map=/map/phh2o.map) | WCS | SoilGrids250m 2.0 - Soil pH in H₂O | 4326 |
+| Colombia en Mapas | [Descarga MDT Cundinamarca](https://www.colombiaenmapas.gov.co/?u=0&t=23&s=...) | TIFF | Modelo Digital de Terreno. Departamento de Cundinamarca | 9377 |
+
+: Fuentes geoespaciales utilizadas en el análisis {tbl-colwidths="[20,30,10,30,10]"}
+
+
+# Preguntas de Análisis
+
+## *¿Qué archivos/servicios permiten la edición de geometrías directamente?*
+Los archivos vectoriales que se almacenan directamente en el dispositivo, sean estos Shapefiles, Geopackages, Geodatasets dispuestos en Geodatabases, etc... y también los servicios WFS (Web Feature Service) que entregan entidades vectoriales sin descargar archivos locales, todo a través de conexiones a bases de datos. 
+
+## *¿Cuáles permiten acceso a la tabla de atributos? Describa tres campos de uno de ellos.*
+Los archivos vectoriales anteriores permiten acceder a la tabla de atributos toda vez que permiten realizar edición de geometrias y atributos. La tabla de atributos tiende a ocultar algunos valores, especialmente las coordenadas en X y en Y, aunque también la mayoria de las veces tienen un campo FID que funciona a manera de identificador unico asignado en muchas ocaciones de manera automatica. Dentro de los archivos vectoriales usados para los productos cartograficos presentados se destacan los atributos de Paisaje, Clima, y las UCS (Unidades Cartograficas de Suelos), los cuales son valores tematicos (Variables Cualitativas) que tienen especial relevancia en los estudios de suelos. 
+
+## *¿En qué casos fue posible cambiar la simbología desde el software cliente?*
+Tanto en Qgis como en ArcGis es posible modificar la simbologia de varias formas, siendo posible representar las variables a través del color (Coropletas) o representando los objetos con simbolos de distintas formas, tamaños, colores o patrones.
+
+Anque es importante señalar que en Cartografia existen simbologias estandarizadas para ciertos campos o la representación de determinadas variables, esto tanto para la cartografia base (Redes viales, Drenajes dobles, Sencillo, lineas Ferroviarias, etc...) como para la cartografia tematica (Suelos, Geologia, Clima, etc...), la información sobre la simbologia y las variables de representación se encuentra en el Catalogo de Objetos dispuesto por el IGAC (almenos para la cartografia base), hoy en dia la mayoria de las cosas se encuentran estandarizadas. [Catalogo de objetos - estandares cartograficos](https://www.igac.gov.co/el-igac/areas-estrategicas/direccion-de-gestion-de-informacion-geografica/especificaciones-tecnicas-para-la-generacion-de-cartografia-basica) 
+
+## *¿Por qué es preferible usar un WFS sobre un Shapefile descargado en proyectos a largo plazo?*
+Dado que los servicios WFS permiten editar las geometrias y la tabla de atributos, estos ofrecen las ventajas de trabajar con archivos locales sin ocupar un espacio fisico en el disco, lo que alargo plazo es una ventaja para los proyectos al minimizar errores producto de la depuración de archivos en el disco duro.

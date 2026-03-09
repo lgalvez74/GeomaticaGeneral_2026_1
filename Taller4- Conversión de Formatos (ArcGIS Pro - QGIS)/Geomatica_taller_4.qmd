@@ -1,0 +1,35 @@
+---
+title: "Conversión de Formatos (ArcGIS Pro - QGIS)"
+author: "Luis Gálvez Gómez"
+format:
+  html: default
+  pdf: default
+execute:
+  echo: true
+---
+
+# Preguntas de Análisis
+
+## *1.Sobre el Ejercicio 1 (Sistemas de Coordenadas)*
+¿por qué es un error intentar abrir un KML con coordenadas planas (metros) en Google Earth. ¿Por qué decimos que este visor no tiene “proyección al vuelo”?
+
+### *Respuesta*
+Google earth interpreta los velores de las coordenadas como si fueran grados, por lo que si se introducen valores proyectados, en metros, va a derivar en errores en el posicionamiento de la capa, ubicandola en lugares incorrectos y probablemente desproporcionados dadas las diferencias entre los posibles valores que pueden adoptar las coordenadas en grados o en metros.
+
+Cuando se habla de proyección al vuelo se hace referencia a la capacidad del software de leer datos en distintos SRC (Sistemas de referencia coordenados) y reproyectarlos automaticamente al sistema del mapa que se está visualizando.
+
+## *2.Sobre el Ejercicio 2 (Eficiencia ETL)*
+¿Es más eficiente realizar primero el filtro por nombre (Atributos) o el filtro por radio de 40 km (Espacial)?
+
+### *Respuesta*
+Si bien se pueden realizar los filtros sin hacer distinciones en su orden de aplicación, esto no es lo más eficiente. Los filtros exijiran menos a la maquina entre menos datos deban revisar, por lo que es conveniente aplicar los filtros más pesados sobre conjuntos de datos reducidos o previamente filtrados, además, computacionalmente es más sencillo realizar filtros sobre una misma capa, aplicando un condicional sobre sus propios atributos que aplicar un filtro que deba integrar un condicional que precise de otras capas y reglas que involucren calculos de distancias.
+
+Es decir, es más eficiente aplicar primero el filtro por nombre o atribtos descrito en la guia y luego sobre este conjunto de datos (ya filtrado) aplicar el filtro por radio (el más exigente). 
+
+## *2.Reflexión sobre Interoperabilidad*
+¿Por qué usar QGIS como “puente” facilita la carga de datos hacia PostgreSQL/PostGIS?.
+
+### *Respuesta*
+Qgis soporta el cargue de distintos formatos (SHP, CSV, GeoJSON, KML, etc...), además de trabajarlos sobre un SRC común evitando errores de compatibilidad espacial, y permite cargar datos espaciales de forma visual y automática hacia PostgreSQL/PostGIS, reduciendo errores y simplificando el proceso de importación.
+
+Destaca por sobre otros software como ArcGisPro debido a que si bien en este existe soporte para PostgreSQL/PostGIS, algunas funciones avanzadas están optimizadas para geodatabases de Esri, no para PostGIS. Además Qgis no necesita de licencias pagas, y trabaja muy bien con estándares abiertos del ecosistema geoespacial (PostGIS, GeoPackage, GeoJSON, etc.), favoreciendo la interpolabilidad de los datos.
