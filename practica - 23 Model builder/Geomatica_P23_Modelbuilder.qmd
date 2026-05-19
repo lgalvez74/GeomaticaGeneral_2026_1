@@ -1,0 +1,183 @@
+---
+title: "Practica - 23 Model builder (ArcGIS Pro) y Model Designer (QGIS) de productos del MDE"
+author:
+  - "Luis Gálvez"
+lang: es
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    theme: simple
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    documentclass: article
+execute:
+  echo: true
+  warning: false
+  message: false
+jupyter: python3
+---
+
+# Desarrollo
+
+## Codigo para descargar el DEM
+```{python}
+#| eval: false
+
+import ee
+# Una sola vez
+#ee.Authenticate()
+
+import os
+import urllib.request
+import zipfile
+
+# ------------------------------------------------------------
+# MUNICIPIOS
+# ------------------------------------------------------------
+municipios = ee.FeatureCollection("FAO/GAUL/2015/level2")
+
+# ------------------------------------------------------------
+# FILTRAR PACHO
+# ------------------------------------------------------------
+pacho = municipios.filter(
+    ee.Filter.And(
+        ee.Filter.eq('ADM0_NAME', 'Colombia'),
+        ee.Filter.eq('ADM1_NAME', 'Cundinamarca'),
+        ee.Filter.eq('ADM2_NAME', 'Pacho')
+    )
+)
+
+# ------------------------------------------------------------
+# SRTM
+# ------------------------------------------------------------
+srtm = ee.Image("USGS/SRTMGL1_003")
+
+# ------------------------------------------------------------
+# RECORTE
+# ------------------------------------------------------------
+mde_pacho = srtm.clip(pacho)
+
+# ------------------------------------------------------------
+# CARPETA SALIDA
+# ------------------------------------------------------------
+carpeta_salida = "data_heavy/raster"
+
+os.makedirs(carpeta_salida, exist_ok=True)
+
+ruta_zip = os.path.join(
+    carpeta_salida,
+    "mde_pacho_temp.zip"
+)
+
+# ------------------------------------------------------------
+# URL DESCARGA
+# ------------------------------------------------------------
+print("Generando URL...")
+
+url = mde_pacho.getDownloadURL({
+    'name': 'mde_pacho_srtm',
+    'scale': 30,
+    'crs': 'EPSG:4326',
+    'region': pacho.geometry(),
+    'format': 'GEO_TIFF'
+})
+
+print("Descargando...")
+
+# ------------------------------------------------------------
+# DESCARGA
+# ------------------------------------------------------------
+urllib.request.urlretrieve(url, ruta_zip)
+
+print("Extrayendo GeoTIFF...")
+
+# ------------------------------------------------------------
+# EXTRAER ZIP
+# ------------------------------------------------------------
+with zipfile.ZipFile(ruta_zip, 'r') as zip_ref:
+
+    nombre_original = zip_ref.namelist()[0]
+
+    zip_ref.extractall(carpeta_salida)
+
+# ------------------------------------------------------------
+# RENOMBRAR
+# ------------------------------------------------------------
+ruta_original = os.path.join(
+    carpeta_salida,
+    nombre_original
+)
+
+ruta_final = os.path.join(
+    carpeta_salida,
+    "mde_pacho_srtm_30m.tif"
+)
+
+if os.path.exists(ruta_original):
+
+    os.rename(ruta_original, ruta_final)
+
+# ------------------------------------------------------------
+# LIMPIEZA
+# ------------------------------------------------------------
+os.remove(ruta_zip)
+
+# ------------------------------------------------------------
+# FINAL
+# ------------------------------------------------------------
+print("========================================")
+print("DESCARGA COMPLETADA")
+print("========================================")
+print(f"Archivo:\n{ruta_final}")
+print("========================================")
+
+
+
+```
+
+::: {.callout-note}
+Se descargó de esta manera debido a que Google Earth Engine no pudo exportar el archivo al Drive por que está desbordado el almacenamiento, sin embargo el codigo es funcional.
+:::
+
+## Desarrollo del modelo
+
+Estos modelos permiten ejecutar y visualizar las funciones y el flujo de trabajo como si fuera programación por bloques. Lo que facilita su lectura e interpretación. Para el desarrollo de este ejercicio se utilizó unicamente el clip de una imagen de la misión SRTM correspondiente al municipio de Pacho, Cundinamarca. No se pudo tomar la cuenca de rio negro en su totalidad debido a su extensión y las dificultades para traer el archivo desde GEE, sin embargo conceptualmente el procesamiento es similar. 
+
+![Modelo ejecutado.](/home/rstudio/work/Documentacion_Geomatica_P23/Model_Builder_Qgis.png){#fig-etiqueta fig-align="center" out-width="80%"}.
+
+El insumo base es el clip de la misión SRTM, sobre el cual se ejecutó la función "Fill sinks", el cual sirve para identificar y rellenar depresiones topográficas que puedan inducir error, estas suelen originarse por errores en el proceso de adquisición de datos, por ruido del sensor, o por procesos de interpolación. El algoritmo modifica mínimamente las elevaciones del MDE para garantizar continuidad hidrológica, permitiendo que el agua pueda drenar correctamente hacia las zonas de salida. Esto genera 3 archivos de salida en potencia, el DEM corregido y "relenado", un archivo con las direcciones de flujo y otro con la delimitación de la cuenca. El DEM corregido se usó como insumo principal para sacar los siguientes insumos con determinadas funciones:
+
+![Resultado: Filled DEM.](/home/rstudio/work/Documentacion_Geomatica_P23/Filled_DEM.png){#fig-etiqueta fig-align="center" out-width="80%"}.
+
+1. Variable de pendiente -> Función de pendiente/slope
+
+Calcula la tasa máxima de cambio de elevación entre cada celda del MDE y sus vecinos inmediatos. Matemáticamente, estima el gradiente topográfico a partir de derivadas espaciales en las direcciones X y Y.
+
+
+![Resultado: Slope.](/home/rstudio/work/Documentacion_Geomatica_P23/Pendiente.png){#fig-etiqueta fig-align="center" out-width="80%"}.
+
+2. Variable de aspecto -> Funcion Aspect
+
+La función determina la orientación de la pendiente máxima de cada píxel del terreno. El algoritmo calcula hacia qué dirección cardinal fluye potencialmente el agua o hacia dónde se encuentra expuesta la ladera, expresándolo generalmente en grados azimutales entre 0° y 360°.
+
+![Resultado: Aspect.](/home/rstudio/work/Documentacion_Geomatica_P23/Aspect.png){#fig-etiqueta fig-align="center" out-width="80%"}.
+
+
+3. Generar curvas hipsometricas -> Funcion de Analisis de curvas hipsometricas
+
+La herramienta Curvas hipsométricas analiza la distribución altitudinal del terreno relacionando el área acumulada con la elevación. A partir del MDE acondicionado, el algoritmo clasifica el relieve en intervalos de altura definidos por el usuario y calcula cuánto porcentaje o área absoluta corresponde a cada rango altitudinal. El resultado permite construir curvas hipsométricas que describen el grado de disección y evolución geomorfológica de una cuenca o región.
+
+
+4. Mapa de sombras -> Funcion Hillshade
+
+![Resultado: Hillshade.](/home/rstudio/work/Documentacion_Geomatica_P23/Hillshade.png){#fig-etiqueta fig-align="center" out-width="80%"}.
+
+El algoritmo utiliza la pendiente y orientación de cada píxel para calcular cómo incidiría la luz según un ángulo solar y un azimut definidos.
+
+
+
+

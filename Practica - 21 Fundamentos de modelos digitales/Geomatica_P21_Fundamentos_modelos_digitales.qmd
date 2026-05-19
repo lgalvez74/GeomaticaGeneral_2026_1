@@ -1,0 +1,59 @@
+---
+title: "Practica - 21 Fundamentos de modelos digitales de elevación y elaboración cartográfica"
+author:
+  - "Luis Gálvez"
+lang: es
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    theme: simple
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    documentclass: article
+execute:
+  echo: true
+  warning: false
+  message: false
+jupyter: python3
+---
+
+# Desarrollo
+
+## Metodologia IDW
+
+Se creó una capa vectorial nueva en la que se construyó un poligono que abarcara la zona montañosa de bogotá. Este poligono se usó como insumo en Google Earth Pro para construir una ruta sobre la que se consolidaron los valores de altimetria (usando GPS Visualizer). El archivo resultante usa lineas como geometria, por lo que se extrajeron sus vertices y se reproyectó (Por que tenia un SRC no proyectado desde la exportación en Google Earth Pro) para poder ejecutar interpolación por el inverso ponderado de la distancia (IDW)
+
+![Imagen_1 - Extracción de vertices.](/home/rstudio/work/Documentacion_Geomatia_P21/1.png){#fig-etiqueta fig-align="center" out-width="80%"}
+
+![Imagen_2 - Reproyección.](/home/rstudio/work/Documentacion_Geomatia_P21/2.png){#fig-etiqueta fig-align="center" out-width="80%"}
+
+Una vez extraidos los vertices y se reproyectó la capa, se utilizó IDW, el cual es un algoritmo de interpolación que estima valores desconocidos en ubicaciones no muestreadas, usando como como parametros la distancia entre los puntos y sus valores. Esto permite transicionando de una capa vectorial que representa un espacio discontinuo, a una capa continua donde se conocen los valores estimados de altimetria para cada ubicación (aunqur no la presicion de la estimación ya que, se ejecutó el algoritmo pero no se usaron metodos de validación cruzada u otros para medir el error o la presición del modelo). 
+
+![Imagen_3 - Calculo IDW.](/home/rstudio/work/Documentacion_Geomatia_P21/3.png){#fig-etiqueta fig-align="center" out-width="80%"}
+
+![Imagen_4 - Hillshade.](/home/rstudio/work/Documentacion_Geomatia_P21/5.png){#fig-etiqueta fig-align="center" out-width="80%"}
+
+Sobre los valores de altimetria estimados en el punto anterior se construyó un mapa de sombras, donde el algoritmo modela el terreno y las sombras a partir de variables altimetricas y parametros como el angulo solar o la altitud del sol (Variables asociadas a la fuente de luz para modelar las sombras). Una vez obtenidos ambos insumos se construyó una salida cartografica.
+
+![Imagen_5 - Extracción de vertices.](/home/rstudio/work/Documentacion_Geomatia_P21/4.png){#fig-etiqueta fig-align="center" out-width="80%"}
+
+## Metodologia Spline
+Dentro de SAGA, se cargó la capa de vertices proyecatods para construir una capa continua a partir de Spline, el cual es un metodo de interpolación que ajusta una superficie suave que pasa entre los puntos (y produce resultados considerablemente distintos al IDW). 
+
+![Imagen_6 - Extracción de vertices.](/home/rstudio/work/Documentacion_Geomatia_P21/6.png){#fig-etiqueta fig-align="center" out-width="80%"}
+
+![Imagen_7 - Extracción de vertices.](/home/rstudio/work/Documentacion_Geomatia_P21/7.png){#fig-etiqueta fig-align="center" out-width="80%"}
+
+
+
+## Análisis de algoritmos de interpolación: Evaluación del comportamiento del algoritmo IDW respecto a la variabilidad topográfica de la geografía Andina Colombiana.
+IDW estima los valores en función de la cercania a los puntos medidos, no toma en cuenta la variabilidad espacial ni la topografia, se asumé un espacio continuo y perfecto. Por lo que en un contexto con variaciones altitudinales muy marcadaas podria derivar en estimaciones impresisas que no atiendan a la realidad en terreno, especialmente en geoformas complejas y quebradas. Otro punto en contra es que debido a la orogenia del pais, la varianza de la altitud no se comporta igual en todas las direcciones, es decir que existe anisotropia, por lo que un algoritmo que se base en la distancia euclidiana isotrópica va a ser altamente impreciso.
+
+
+## Algoritmos alternativos para interpolación: Propuesta y evaluación de otros algoritmos de interpolación aplicables para MDE
+
+La interpolación es la aplicación de metodos estadisticos para la estimación de valores desconocidos, esto a partir de valores muestreados y dentro de un área delimitada. Los modelos utilizados pueden variar y tienen caracteristicas propias, se debe elegir el que produzca una representación espacial de la realidad que sea lo mas cercana posible al territorio. Como se dijo anteriormente IDW presenta problemas en el contexto Colombiano por que no modela la anisotropia ni considera las variaciones altitudinales producto de geomorfologias quebradas. Algoritmos como spline producen superficies continuas y suaves que son eficientes en relieves con transiciones graduales, sin embargo el modelo es sensible a datos atipicos o variaciones abruptas que puedan generar sobreoscilaciones. Personalmente para el contexto colombiano optaria por usar Krigging, que aunque es más costoso computacionalmente, permite modelar la anisotropia y es eficiente modelando topografias complejas.
